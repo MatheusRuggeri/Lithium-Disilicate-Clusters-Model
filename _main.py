@@ -70,21 +70,45 @@ def detect_circles(image, r_min, r_max, circ_param_1, circ_param_2):
 
     return detected_circles
 
-
-def process_frame(img, squares, circle_left, circle_right, r_min, r_max, circ_param_1, circ_param_2):
+        
+def process_frame(img, frame_number, squares, circle_left, circle_right, r_min, r_max, circ_param_1, circ_param_2):
     imgGray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    imgf = cv2.adaptiveThreshold(imgGray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                 cv2.THRESH_BINARY, 21, 2)
+    
+    
+    # Try different block sizes and constants
+    block_size = 15
+    constant = 4
+    
+    imgf = cv2.adaptiveThreshold(imgGray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                 cv2.THRESH_BINARY, block_size, constant)
+    imgf = cv2.bitwise_not(cv2.Canny(imgf, 200, 1000))
+
+    # Apply morphological operations (erosion and dilation) to reduce noise
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    #imgf = cv2.morphologyEx(imgf, cv2.MORPH_OPEN, kernel)
 
     crop_img = crop_image(imgf, squares)
 
-    if (circle_left + circle_right) != 0:
-        rMin = int(min(circle_left, circle_right) * .95)
-        rMax = int(max(circle_left, circle_right) * 1.05)
-
     detected_circles = detect_circles(crop_img, r_min, r_max, circ_param_1, circ_param_2)
+
+    # Export the processed image with the circles detected
+    export_processed_frame(imgf, squares, "export/frames_threshold", frame_number)
+
     return imgf, crop_img, detected_circles
 
+
+def export_processed_frame(img, squares, output_folder, frame_number, sulfix = ""):
+    # Create a copy of the crop_img to draw the squares without modifying the original image
+    img_with_squares = img.copy()
+    
+    # Draw the squares in blue on the image with squares
+    cv2.rectangle(img_with_squares, tuple(squares['LU']), tuple(squares['LD']), (128, 128, 128), 5)
+    cv2.rectangle(img_with_squares, tuple(squares['RU']), tuple(squares['RD']), (128, 128, 128), 5)
+        
+    # Save the processed image with the squares and circles detected
+    output_image_path = os.path.join(output_folder, f'processed_frame_{frame_number}{sulfix}.jpg')
+    cv2.imwrite(output_image_path, img_with_squares)
+    
 
 def calculate_distance(detected_circles, squares):
     if detected_circles is not None:
@@ -173,11 +197,17 @@ def find_frame_arduino_line(df, frame_number, flash_arduino_data, frames_per_sec
     return closest_value_df
 
     
-
 def export_dataframe(df):
     export_file = os.path.join('out.csv')
     df.to_csv(export_file, index=False)
     df = df.replace("", np.nan)
+
+
+def load_dataframe(file_path):
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+    df = pd.read_csv(file_path)
+    return df
 
 
 def plot_graphs(df_export, video_path):
@@ -232,12 +262,12 @@ def draw_shapes_on_frame(frame, row):
     # Draw the left and right circles as small 3px squares in red
     left_circle_x, left_circle_y, left_circle_radius = row['CircleLeft_X'], row['CircleLeft_Y'], row['CircleLeft_Radius']
     right_circle_x, right_circle_y, right_circle_radius = row['CircleRight_X'], row['CircleRight_Y'], row['CircleRight_Radius']
-    cv2.rectangle(frame, (int(left_circle_x) - 1, int(left_circle_y) - 1), (int(left_circle_x) + 1, int(left_circle_y) + 1), (0, 0, 255), 3)
-    cv2.rectangle(frame, (int(right_circle_x) - 1, int(right_circle_y) - 1), (int(right_circle_x) + 1, int(right_circle_y) + 1), (0, 0, 255), 3)
+    cv2.rectangle(frame, (int(left_circle_x) - 1, int(left_circle_y) - 1), (int(left_circle_x) + 1, int(left_circle_y) + 1), (0, 0, 255), 10)
+    cv2.rectangle(frame, (int(right_circle_x) - 1, int(right_circle_y) - 1), (int(right_circle_x) + 1, int(right_circle_y) + 1), (0, 0, 255), 10)
 
     # Draw the circle radius in green
-    cv2.circle(frame, (int(left_circle_x), int(left_circle_y)), int(left_circle_radius), (0, 255, 0), 3)
-    cv2.circle(frame, (int(right_circle_x), int(right_circle_y)), int(right_circle_radius), (0, 255, 0), 3)
+    cv2.circle(frame, (int(left_circle_x), int(left_circle_y)), int(left_circle_radius), (0, 255, 0), 5)
+    cv2.circle(frame, (int(right_circle_x), int(right_circle_y)), int(right_circle_radius), (0, 255, 0), 5)
 
 
 
@@ -308,7 +338,8 @@ if __name__ == "__main__":
     x, y, r = 0, 0, 0
     circle_left, circle_right = 0, 0
     dist_list = []
-    #last_frame = first_frame + 50
+    #last_frame = first_frame - 1
+    last_frame = first_frame + 50
     
     # Loop through each frame from first to last (inclusive)
     for frame_number in range(first_frame, last_frame + 1):
@@ -327,7 +358,7 @@ if __name__ == "__main__":
         img = cv2.imread(os.path.join(output_folder, f"frame_{frame_number}.jpg"), cv2.IMREAD_COLOR)
         
         # Process the frame to get important elements (imgf: thresholded image, crop_img: cropped image, detected_circles: circles found)
-        imgf, crop_img, detected_circles = process_frame(img, squares, circle_left, circle_right,
+        imgf, crop_img, detected_circles = process_frame(img, frame_number, squares, circle_left, circle_right,
                                                          r_min, r_max, circ_param_1, circ_param_2)
 
         # Calculate the distance and update the circle_left and circle_right values
@@ -359,25 +390,26 @@ if __name__ == "__main__":
 
     #print(dist_list)
     #export_dataframe(df_frame_anaysis)
-    
+    df_frame_anaysis = load_dataframe('out.csv')
+
     plot_graphs(df_frame_anaysis, "export")
 
 
 # Loop through each row of the DataFrame and draw shapes on each frame
-for _, row in df_frame_anaysis[0:10].iterrows():
-    frame_number = row['Frame']
+for _, row in df_frame_anaysis[0:50].iterrows():
+    frame_number = round(row['Frame'])
     frame_time = row['Time']
     temperature = row['Temperature']
     arduino_line = row['Arduino_Line']
     distance = row['Distance']
 
     # Load the frame image corresponding to the frame number (you need to adapt this part)
-    frame_path = f'frames/frame_{frame_number}.jpg'
+    frame_path = f'export/frames/frame_{frame_number}.jpg'
     frame = cv2.imread(frame_path)
 
     # Draw shapes on the frame
     draw_shapes_on_frame(frame, row)
 
     # Save the modified frame with drawn shapes (you can choose a different output path)
-    output_frame_path = f'frames_draw/modified_frame_{frame_number}.jpg'
+    output_frame_path = f'export/frames_draw/frame_{frame_number}.jpg'
     cv2.imwrite(output_frame_path, frame)
