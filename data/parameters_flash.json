@@ -1,0 +1,18 @@
+{
+  "rMin": 160,
+  "rMax": 180,
+  
+  "circ_param_1": 100,
+  "circ_param_2": 10,
+  
+  "ard_read": 0,
+  "vid_frame": 0,
+  "frame_stop_flash": 19082,
+  
+  "squares": {
+    "LU": [250,400],
+    "LD": [750,900],
+    "RU": [1250,400],
+    "RD": [1750,900]
+  }
+}

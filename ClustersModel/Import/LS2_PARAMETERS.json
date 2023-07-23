@@ -1,0 +1,36 @@
+{
+  "Hm_CTE": 61090,
+  "D_CTE": 4.68e-10,  
+  "Sigma_CTE": 0.02885,
+  "Cs_CTE": 1.87,
+  "P0": 0.65,
+  
+  "Ns_CTE": 1E13,
+  "Q_CTE": 10,
+  
+  "Tm_CTE": 1307,
+  "Tg_CTE": 727,
+  "Step_CTE": 1,
+  
+  "Gama_CTE": 2885e-5,
+  "Ks_CTE": 1,
+  "NP_CTE": 0.83333,
+  
+  "A_CTE": -2.37,
+  "B_CTE": 3248.62,
+  "To_CTE": 500.24,
+  
+  "Details": {
+    "Name": "Dissilicato de Litio",
+    "Date": "05/10/2020",
+    "About": "Amostra pos pandemia, fundida pelo Bellini e Icaro"
+  },
+  
+  "Temperatures": [
+    0,
+    1,
+    2
+  ],
+  
+  "IMPORTANT": "This code need to be a JSON, validade here before import -> https://jsoneditoronline.org/"
+}

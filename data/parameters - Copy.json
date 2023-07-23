@@ -1,0 +1,9 @@
+{ 
+  "video_path": "data/video.mp4",
+  "output_folder": "export/frames/",
+  
+  "start_offset": "00:04:30",
+  "export_duration": "00:06:00",
+  
+  "frame_rate": 60
+}

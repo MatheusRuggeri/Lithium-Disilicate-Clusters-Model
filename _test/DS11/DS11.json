@@ -1,0 +1,18 @@
+{ 
+  "rMin": 160,
+  "rMax": 180,
+  
+  "start_offset": "00:04:30",
+  "export_duration": "00:06:00",
+  
+  "ard_read": 0,
+  "vid_frame": 0,
+  "frame_stop_flash": 19082,
+  
+  "squares": {
+    "LU": [400,600],
+    "LD": [600,750],
+    "RU": [1380,580],
+    "RD": [1570,750]
+  }
+}

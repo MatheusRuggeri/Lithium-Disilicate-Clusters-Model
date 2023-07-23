@@ -1,0 +1,23 @@
+
+Valores localizados:
+Hm -> https://link.springer.com/article/10.1007/BF00595754
+Ns -> https://books.google.com.br/books?id=zrktDwAAQBAJ&pg=PA44&lpg=PA44&dq=equation+vft+lithium+disilicate+parameters&source=bl&ots=6kOSQ_Y7YF&sig=ACfU3U0xF0rzbxcQ6RFJ2qUoC1FDD1I8Hg&hl=pt-BR&sa=X&ved=2ahUKEwjZgp_KqpnqAhX0LLkGHavGCYcQ6AEwC3oECAsQAQ#v=onepage&q=equation%20vft%20lithium%20disilicate%20parameters&f=false
+q  -> Experimental
+d  -> 
+σ  -> 
+Cs -> http://www.lamav.ufba.br/pdf/jcp135b.pdf
+
+Tm -> https://janaf.nist.gov/tables/Li-032.html (https://janaf.nist.gov/tables/Si-index.html)
+Tg -> "
+
+p0 -> Experimental
+γ  ->
+Ks -> https://reader.elsevier.com/reader/sd/pii/S0022309312005546?token=360D0AB6074EE8D7BF97CFFCCCD474D2F217B4352680423F9FA43F6F3F4583775D2E8BEDC0DEAA123822E904688FB4CE
+NP -> http://www.lamav.ufscar.br/artpdf/crc5.pdf
+
+A  -> https://books.google.com.br/books?id=zrktDwAAQBAJ&pg=PA44&lpg=PA44&dq=equation+vft+lithium+disilicate+parameters&source=bl&ots=6kOSQ_Y7YF&sig=ACfU3U0xF0rzbxcQ6RFJ2qUoC1FDD1I8Hg&hl=pt-BR&sa=X&ved=2ahUKEwjZgp_KqpnqAhX0LLkGHavGCYcQ6AEwC3oECAsQAQ#v=onepage&q=equation%20vft%20lithium%20disilicate%20parameters&f=false
+B  -> https://books.google.com.br/books?id=zrktDwAAQBAJ&pg=PA44&lpg=PA44&dq=equation+vft+lithium+disilicate+parameters&source=bl&ots=6kOSQ_Y7YF&sig=ACfU3U0xF0rzbxcQ6RFJ2qUoC1FDD1I8Hg&hl=pt-BR&sa=X&ved=2ahUKEwjZgp_KqpnqAhX0LLkGHavGCYcQ6AEwC3oECAsQAQ#v=onepage&q=equation%20vft%20lithium%20disilicate%20parameters&f=false
+To -> https://books.google.com.br/books?id=zrktDwAAQBAJ&pg=PA44&lpg=PA44&dq=equation+vft+lithium+disilicate+parameters&source=bl&ots=6kOSQ_Y7YF&sig=ACfU3U0xF0rzbxcQ6RFJ2qUoC1FDD1I8Hg&hl=pt-BR&sa=X&ved=2ahUKEwjZgp_KqpnqAhX0LLkGHavGCYcQ6AEwC3oECAsQAQ#v=onepage&q=equation%20vft%20lithium%20disilicate%20parameters&f=false
+
+d 100% = 2.38
+	https://www.sciencedirect.com/science/article/pii/S0366317518300669#:~:text=The%20result%20revealed%20that%20the,to%202.45%20g%2Fcm3.
