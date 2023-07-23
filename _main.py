@@ -121,17 +121,22 @@ def show_image(img, window_name="Debug Image"):
 
 def parse_arduino_file(arduino_file):
     df = pd.read_csv(arduino_file, sep="\t")
-    flash_ard = df[df['READ_ON'] == 0]['READ_NUMBER'].reset_index()['index'][0]
-    return df, flash_ard
+    return df 
 
 
+def find_flash_in_arduino(df):
+    flash_arduino_data = df[df['READ_ON'] == 0].reset_index(drop=True).head(1)
+    return flash_arduino_data
+
+
+# The temperature where the flash stops is the same frame as it happens
 def calculate_temperature_time_lists(df, flash_ard, dist_list, frame_stop_flash):
     temperature_list = [0 for _ in dist_list]
     tempo_list = [0 for _ in dist_list]
-
+    
     temperature_list[frame_stop_flash] = df['READ_INT_TEMP'][flash_ard]
     tempo_list[frame_stop_flash] = 0
-
+    
     count = 0
     for i in range(frame_stop_flash - 1, -1, -1):
         count += 1
@@ -149,33 +154,47 @@ def calculate_temperature_time_lists(df, flash_ard, dist_list, frame_stop_flash)
     return temperature_list, tempo_list
 
 
-def export_dataframe(dist_list, temperature_list, tempo_list, video_path):
-    df_export = pd.DataFrame()
-    df_export['DISTANCE'] = dist_list
-    df_export['TEMPERATURE'] = temperature_list
-    df_export['TIME'] = tempo_list
+# Find the arduino line of this frame, using the difference from this frame to the flash
+def find_frame_arduino_line(df, frame_number, flash_arduino_data, frames_per_second = 60):
+    # Find the time difference.
+    # IMPORTANT -> The frame 1 is not the first line of arduino, this function sincronize it
+    flash_frame = flash_arduino_data['READ_NUMBER'][0]
+    flash_time = flash_arduino_data['READ_TIMER'][0]
+    
+    delta_time_millis = 1000 * ((flash_frame - frame_number) / frames_per_second)
+    delta_time_millis = round(delta_time_millis)
 
-    export_file = os.path.join(video_path, 'out.csv')
-    df_export.to_csv(export_file, index=False)
-    df_export = df_export.replace("", np.nan)
-    return df_export
+    frame_time = flash_time - round(delta_time_millis)
+    
+    # Find the closest value in the 'READ_TIMER' column to frame_time
+    closest_value = df.iloc[(df['READ_TIMER'] - frame_time).abs().idxmin()]
+    closest_value_df = closest_value.to_frame().transpose()
+    
+    return closest_value_df
+
+    
+
+def export_dataframe(df):
+    export_file = os.path.join('out.csv')
+    df.to_csv(export_file, index=False)
+    df = df.replace("", np.nan)
 
 
 def plot_graphs(df_export, video_path):
     fig = plt.figure(figsize=(16, 9))
-    plt.plot(df_export['TEMPERATURE'], df_export['DISTANCE'])
+    plt.plot(df_export['Temperature'], df_export['Distance'])
     plt.savefig(os.path.join(video_path, 'DILAT.jpg'), dpi=120)
 
     fig = plt.figure(figsize=(16, 9))
-    plt.plot(df_export['TEMPERATURE'])
+    plt.plot(df_export['Temperature'])
     plt.savefig(os.path.join(video_path, 'Temperature.jpg'), dpi=120)
 
     fig = plt.figure(figsize=(16, 9))
-    plt.plot(df_export['DISTANCE'])
+    plt.plot(df_export['Distance'])
     plt.savefig(os.path.join(video_path, 'Distance.jpg'), dpi=120)
 
     fig = plt.figure(figsize=(16, 9))
-    plt.plot(df_export['TIME'])
+    plt.plot(df_export['Time'])
     plt.savefig(os.path.join(video_path, 'Time.jpg'), dpi=120)
 
     plt.close("all")
@@ -202,6 +221,23 @@ def create_empty_dataframe():
 def append_parameters(df, parameters_list):
     df.loc[df.shape[0]] = parameters_list
     return df
+
+
+# Function to draw the squares and circles on the frame
+def draw_shapes_on_frame(frame, row):
+    # Draw the left and right squares in blue
+    cv2.rectangle(frame, tuple(squares['LU']), tuple(squares['LD']), (255, 0, 0), 5)
+    cv2.rectangle(frame, tuple(squares['RU']), tuple(squares['RD']), (255, 0, 0), 5)
+
+    # Draw the left and right circles as small 3px squares in red
+    left_circle_x, left_circle_y, left_circle_radius = row['CircleLeft_X'], row['CircleLeft_Y'], row['CircleLeft_Radius']
+    right_circle_x, right_circle_y, right_circle_radius = row['CircleRight_X'], row['CircleRight_Y'], row['CircleRight_Radius']
+    cv2.rectangle(frame, (int(left_circle_x) - 1, int(left_circle_y) - 1), (int(left_circle_x) + 1, int(left_circle_y) + 1), (0, 0, 255), 3)
+    cv2.rectangle(frame, (int(right_circle_x) - 1, int(right_circle_y) - 1), (int(right_circle_x) + 1, int(right_circle_y) + 1), (0, 0, 255), 3)
+
+    # Draw the circle radius in green
+    cv2.circle(frame, (int(left_circle_x), int(left_circle_y)), int(left_circle_radius), (0, 255, 0), 3)
+    cv2.circle(frame, (int(right_circle_x), int(right_circle_y)), int(right_circle_radius), (0, 255, 0), 3)
 
 
 
@@ -253,26 +289,42 @@ if __name__ == "__main__":
     print("vid_frame:", vid_frame)
     print("frame_stop_flash:", frame_stop_flash)
     print("Squares:", squares)
+    
+    
+    arduino_file = "data/Arduino.txt"
+    df_arduino = parse_arduino_file(arduino_file)
+    
+    # Find the frame where the flash finished
+    stop_flash_temperature = find_flash_in_arduino(df_arduino)
+    
+    
+
+    #temperature_list, tempo_list = calculate_temperature_time_lists(df_arduino, stop_flash_temperature, dist_list, frame_stop_flash)
+    
 
     # Usage example:
-    empty_df = create_empty_dataframe()
+    df_frame_anaysis = create_empty_dataframe()
     
     x, y, r = 0, 0, 0
     circle_left, circle_right = 0, 0
     dist_list = []
-    last_frame = first_frame - 1
+    #last_frame = first_frame + 50
     
     # Loop through each frame from first to last (inclusive)
-    for i in range(first_frame, last_frame + 1):
+    for frame_number in range(first_frame, last_frame + 1):
         # Print frame number every 50 frames, so I know how is the progress
-        if not i % 50:
-            print(round((100*(i-first_frame)/(last_frame + 1 - first_frame)),2), "%")
+        if not frame_number % 50:
+            print(round((100*(frame_number-first_frame)/(last_frame + 1 - first_frame)),2), "%")
 
+        # Find the data from arduino for this frame
+        this_frame_arduino_data = find_frame_arduino_line(df_arduino, frame_number, stop_flash_temperature)
+        this_frame_arduino_data = this_frame_arduino_data.reset_index(drop=True)
+        
         # Initialize distance variable for the current frame
         distance = 0
 
         # Read the image frame for the current iteration
-        img = cv2.imread(os.path.join(output_folder, f"frame_{i}.jpg"), cv2.IMREAD_COLOR)
+        img = cv2.imread(os.path.join(output_folder, f"frame_{frame_number}.jpg"), cv2.IMREAD_COLOR)
         
         # Process the frame to get important elements (imgf: thresholded image, crop_img: cropped image, detected_circles: circles found)
         imgf, crop_img, detected_circles = process_frame(img, squares, circle_left, circle_right,
@@ -284,15 +336,48 @@ if __name__ == "__main__":
         # Append the calculated distance to the dist_list for further analysis
         dist_list.append(distance)
         
+        # Save the parametes: 'Frame', 'Time', 'Temperature', 'Arduino_Line',
+        #                     'Distance', 'CircleLeft_X', 'CircleLeft_Y', 'CircleLeft_Radius',
+        #                     'CircleRight_X', 'CircleRight_Y', 'CircleRight_Radius
+        frame_time = this_frame_arduino_data['READ_TIMER'][0]
+        frame_temperature = this_frame_arduino_data['READ_INT_TEMP'][0]
+        frame_arduino_line = this_frame_arduino_data['READ_NUMBER'][0]
+        frame_distance = distance
+        frame_circle_left_x = detected_circles[0][0][0]
+        frame_circle_left_y = detected_circles[0][0][1]
+        frame_circle_left_r = detected_circles[0][0][2]
+        frame_circle_right_x = detected_circles[0][1][0]
+        frame_circle_right_y = detected_circles[0][1][1]
+        frame_circle_right_r = detected_circles[0][1][2]
+        parameters_list = [frame_number, frame_time, frame_temperature, frame_arduino_line, frame_distance, 
+                           frame_circle_left_x, frame_circle_left_y, frame_circle_left_r, 
+                           frame_circle_right_x, frame_circle_right_y, frame_circle_right_r]
+        
+        df_frame_anaysis = append_parameters(df_frame_anaysis, parameters_list)
+            
     dist_list = load_dist_list_from_file('data/dist_list.txt')
 
     #print(dist_list)
+    #export_dataframe(df_frame_anaysis)
     
-    arduino_file = "data/Arduino.txt"
-    df, flash_ard = parse_arduino_file(arduino_file)
-    
-    temperature_list, tempo_list = calculate_temperature_time_lists(df, flash_ard, dist_list, frame_stop_flash)
-    
-    df_export = export_dataframe(dist_list, temperature_list, tempo_list, "export")
-    
-    plot_graphs(df_export, "export")
+    plot_graphs(df_frame_anaysis, "export")
+
+
+# Loop through each row of the DataFrame and draw shapes on each frame
+for _, row in df_frame_anaysis[0:10].iterrows():
+    frame_number = row['Frame']
+    frame_time = row['Time']
+    temperature = row['Temperature']
+    arduino_line = row['Arduino_Line']
+    distance = row['Distance']
+
+    # Load the frame image corresponding to the frame number (you need to adapt this part)
+    frame_path = f'frames/frame_{frame_number}.jpg'
+    frame = cv2.imread(frame_path)
+
+    # Draw shapes on the frame
+    draw_shapes_on_frame(frame, row)
+
+    # Save the modified frame with drawn shapes (you can choose a different output path)
+    output_frame_path = f'frames_draw/modified_frame_{frame_number}.jpg'
+    cv2.imwrite(output_frame_path, frame)
