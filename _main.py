@@ -4,6 +4,7 @@ Created on Sat Jul 22 15:51:26 2023
 
 @author: jomar
 """
+# SPECIMENT ->
 
 import json
 import os
@@ -24,6 +25,18 @@ def ensure_directories(path):
     directory = os.path.dirname(path)
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+# Check if a file exists
+def file_exists(file_path):
+    return os.path.exists(file_path) and os.path.isfile(file_path)
+
+
+# Check a directory is empty
+def is_directory_empty(directory_path):
+    if not os.path.exists(directory_path):
+        return False
+
+    return len(os.listdir(directory_path)) == 0
 
 
 def extract_frames(video_path, start_offset, output_folder, export_duration):
@@ -270,76 +283,10 @@ def draw_shapes_on_frame(frame, row):
     cv2.circle(frame, (int(right_circle_x), int(right_circle_y)), int(right_circle_radius), (0, 255, 0), 5)
 
 
-
-if __name__ == "__main__":
-    parameters_file = "data/parameters.json"
-    parameters = read_parameters(parameters_file)
-
-    video_path = parameters["video_path"]
-    output_folder = parameters["output_folder"]
-    start_offset = parameters["start_offset"]
-    export_duration = parameters["export_duration"]
-    frame_rate = parameters["frame_rate"]
-
-    print("Video Path:", video_path)
-    print("Output Folder:", output_folder)
-    print("Start Offset:", start_offset)
-    print("Export Duration:", export_duration)
-    print("Frame Rate:", frame_rate)
-    
-    
-    _extract_frames = False 
-    
-    if _extract_frames:
-        extract_frames(video_path, start_offset, output_folder, export_duration)
-        
-    first_frame, last_frame = get_first_and_last_frame_number(output_folder)
-    print(first_frame, last_frame)
-    
-
-    # Read parameters from parameters_flash.json
-    parameters_flash_file = "data/parameters_flash.json"
-    parameters_flash = read_parameters(parameters_flash_file)
-
-    crop_squares = parameters_flash["squares"]
-    r_min = parameters_flash["rMin"]
-    r_max = parameters_flash["rMax"]
-    circ_param_1 = parameters_flash["circ_param_1"]
-    circ_param_2 = parameters_flash["circ_param_2"]
-    ard_read = parameters_flash["ard_read"]
-    vid_frame = parameters_flash["vid_frame"]
-    frame_stop_flash = parameters_flash["frame_stop_flash"]
-    squares = parameters_flash["squares"]
-
-    print("rMin:", r_min)
-    print("rMax:", r_max)
-    print("circ_param_1:", circ_param_1)
-    print("circ_param_2:", circ_param_2)
-    print("ard_read:", ard_read)
-    print("vid_frame:", vid_frame)
-    print("frame_stop_flash:", frame_stop_flash)
-    print("Squares:", squares)
-    
-    
-    arduino_file = "data/Arduino.txt"
-    df_arduino = parse_arduino_file(arduino_file)
-    
-    # Find the frame where the flash finished
-    stop_flash_temperature = find_flash_in_arduino(df_arduino)
-    
-    
-
-    #temperature_list, tempo_list = calculate_temperature_time_lists(df_arduino, stop_flash_temperature, dist_list, frame_stop_flash)
-    
-
-    # Usage example:
-    df_frame_anaysis = create_empty_dataframe()
-    
+def analyze_frames():
     x, y, r = 0, 0, 0
     circle_left, circle_right = 0, 0
-    dist_list = []
-    #last_frame = first_frame - 1
-    last_frame = first_frame + 50
+    df_frame_anaysis = create_empty_dataframe()
     
     # Loop through each frame from first to last (inclusive)
     for frame_number in range(first_frame, last_frame + 1):
@@ -363,30 +310,112 @@ if __name__ == "__main__":
 
         # Calculate the distance and update the circle_left and circle_right values
         circle_left, circle_right, distance = calculate_distance(detected_circles, squares)
-
-        # Append the calculated distance to the dist_list for further analysis
-        dist_list.append(distance)
         
         # Save the parametes: 'Frame', 'Time', 'Temperature', 'Arduino_Line',
         #                     'Distance', 'CircleLeft_X', 'CircleLeft_Y', 'CircleLeft_Radius',
         #                     'CircleRight_X', 'CircleRight_Y', 'CircleRight_Radius
-        frame_time = this_frame_arduino_data['READ_TIMER'][0]
-        frame_temperature = this_frame_arduino_data['READ_INT_TEMP'][0]
-        frame_arduino_line = this_frame_arduino_data['READ_NUMBER'][0]
-        frame_distance = distance
-        frame_circle_left_x = detected_circles[0][0][0]
-        frame_circle_left_y = detected_circles[0][0][1]
-        frame_circle_left_r = detected_circles[0][0][2]
-        frame_circle_right_x = detected_circles[0][1][0]
-        frame_circle_right_y = detected_circles[0][1][1]
-        frame_circle_right_r = detected_circles[0][1][2]
-        parameters_list = [frame_number, frame_time, frame_temperature, frame_arduino_line, frame_distance, 
-                           frame_circle_left_x, frame_circle_left_y, frame_circle_left_r, 
-                           frame_circle_right_x, frame_circle_right_y, frame_circle_right_r]
+        time =            this_frame_arduino_data['READ_TIMER'][0]
+        temperature =     this_frame_arduino_data['READ_INT_TEMP'][0]
+        arduino_line =    this_frame_arduino_data['READ_NUMBER'][0]
+        distance =        distance
+        circle_left_x =   detected_circles[0][0][0]
+        circle_left_y =   detected_circles[0][0][1]
+        circle_left_r =   detected_circles[0][0][2]
+        circle_right_x =  detected_circles[0][1][0]
+        circle_right_y =  detected_circles[0][1][1]
+        circle_right_r =  detected_circles[0][1][2]
+        parameters_list = [frame_number, time, temperature, arduino_line, distance, 
+                           circle_left_x, circle_left_y, circle_left_r, 
+                           circle_right_x, circle_right_y, circle_right_r]
         
         df_frame_anaysis = append_parameters(df_frame_anaysis, parameters_list)
-            
-    dist_list = load_dist_list_from_file('data/dist_list.txt')
+        
+    return df_frame_anaysis
+
+
+def draw_over_frames():
+    # Loop through each row of the DataFrame and draw shapes on each frame
+    for _, row in df_frame_anaysis[0:50].iterrows():
+        frame_number =  round(row['Frame'])
+    
+        # Load the frame image corresponding to the frame number (you need to adapt this part)
+        frame_path = f'export/frames/frame_{frame_number}.jpg'
+        frame = cv2.imread(frame_path)
+    
+        # Draw shapes on the frame
+        draw_shapes_on_frame(frame, row)
+    
+        # Save the modified frame with drawn shapes (you can choose a different output path)
+        output_frame_path = f'export/frames_draw/frame_{frame_number}.jpg'
+        cv2.imwrite(output_frame_path, frame)
+
+if __name__ == "__main__":
+    #
+    ### IMPORT DATA FROM EXTERNAL FILES
+    #
+        
+    # Load the parameters about the video
+    parameters_file = "data/parameters.json"
+    parameters = read_parameters(parameters_file)
+    
+    # Create some variables with those parameters, just to easy access.
+    video_path =                parameters["video_path"]
+    output_folder =             parameters["output_folder"]
+    start_offset =              parameters["start_offset"]
+    export_duration =           parameters["export_duration"]
+    frame_rate =                parameters["frame_rate"]
+    
+    # Read parameters from parameters_flash.json
+    parameters_flash_file = "data/parameters_flash.json"
+    parameters_flash = read_parameters(parameters_flash_file)
+    
+    # Create the variables from the Flash sintering process
+    crop_squares =              parameters_flash["squares"]
+    r_min =                     parameters_flash["rMin"]
+    r_max =                     parameters_flash["rMax"]
+    circ_param_1 =              parameters_flash["circ_param_1"]
+    circ_param_2 =              parameters_flash["circ_param_2"]
+    ard_read =                  parameters_flash["ard_read"]
+    vid_frame =                 parameters_flash["vid_frame"]
+    frame_stop_flash =          parameters_flash["frame_stop_flash"]
+    squares =                   parameters_flash["squares"]
+    
+    # Read data created by the circuit monitoring the process
+    arduino_file = "data/Arduino.txt"
+    df_arduino = parse_arduino_file(arduino_file)
+    
+    # Find the frame where the flash finished
+    stop_flash_temperature =    find_flash_in_arduino(df_arduino)
+    
+    #
+    ### EXTRACT THE FRAMES AND GET INFORMATION ABOUT IT
+    #
+        
+    # If the export frames directory is empty, then extract the frames
+    if is_directory_empty(output_folder):
+        extract_frames(video_path, start_offset, output_folder, export_duration)
+    
+    # Get the first and the last frames that were extracted
+    first_frame, last_frame = get_first_and_last_frame_number(output_folder)
+    print("Found frames between:", first_frame, "and", last_frame)
+    
+    #
+    ### ANALYZE EACH FRAME
+    #
+    # If the analyze file exists, then just load
+    if not file_exists("out.csv"):
+        df_frame_anaysis = analyze_frames()
+    else:
+        df_frame_anaysis = load_dataframe('out.csv')
+    
+    #
+    ### DRAW OVER THE FRAMES
+    #
+    draw_over_frames()
+    
+    
+    
+    #dist_list = load_dist_list_from_file('data/dist_list.txt')
 
     #print(dist_list)
     #export_dataframe(df_frame_anaysis)
@@ -394,22 +423,5 @@ if __name__ == "__main__":
 
     plot_graphs(df_frame_anaysis, "export")
 
+    #temperature_list, tempo_list = calculate_temperature_time_lists(df_arduino, stop_flash_temperature, dist_list, frame_stop_flash)
 
-# Loop through each row of the DataFrame and draw shapes on each frame
-for _, row in df_frame_anaysis[0:50].iterrows():
-    frame_number = round(row['Frame'])
-    frame_time = row['Time']
-    temperature = row['Temperature']
-    arduino_line = row['Arduino_Line']
-    distance = row['Distance']
-
-    # Load the frame image corresponding to the frame number (you need to adapt this part)
-    frame_path = f'export/frames/frame_{frame_number}.jpg'
-    frame = cv2.imread(frame_path)
-
-    # Draw shapes on the frame
-    draw_shapes_on_frame(frame, row)
-
-    # Save the modified frame with drawn shapes (you can choose a different output path)
-    output_frame_path = f'export/frames_draw/frame_{frame_number}.jpg'
-    cv2.imwrite(output_frame_path, frame)
